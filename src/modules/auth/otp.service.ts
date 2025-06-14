@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { generate } from 'otp-generator';
 import RedisService from 'src/core/database/redis.service';
 
@@ -17,8 +17,27 @@ export class OtpService {
   }
 
   async sendOtp(phoneNumber: string) {
+    await this.checkOtpExisting(`user:${phoneNumber}`);
     const tempOtp = this.generateOtp();
     const resRedis = await this.redisService.setOtp(phoneNumber, tempOtp);
-    console.log(resRedis);
+    if (resRedis === 'OK') {
+      return true;
+    }
+  }
+
+  async checkOtpExisting(key: string) {
+    console.log(key);
+    const checkOtp = await this.redisService.getOtp(key);
+    if (checkOtp) {
+      const ttl = await this.redisService.getTtlKey(key);
+      throw new BadRequestException(`Please try again after ${ttl} seconds`);
+    }
+  }
+
+  async verifyOtpSendedUser(key: string, code: string) {
+    const otp = await this.redisService.getOtp(key);
+    if (!otp || otp !== code) throw new BadRequestException('Invalid code');
+
+    await this.redisService.delKey(key);
   }
 }

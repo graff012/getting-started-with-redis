@@ -22,4 +22,18 @@ export default class RedisService {
     const res = await this.redis.setex(key, this.duration, value);
     return res;
   }
+
+  async getOtp(key: string) {
+    const otp = await this.redis.get(key);
+    return otp;
+  }
+
+  async getTtlKey(key: string) {
+    const ttl = await this.redis.ttl(key);
+    return ttl;
+  }
+
+  async delKey(key: string) {
+    return await this.redis.del(key);
+  }
 }
